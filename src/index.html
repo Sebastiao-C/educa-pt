@@ -66,8 +66,6 @@
             const botResponse = data.content; // Access the 'content' property of the response object
             appendMessage('bot', botResponse);
             messageList.push({ role: 'bot', content: botResponse }); // Add bot response to the list
-          appendMessage('bot', data.response);
-          messageList.push({ role: 'bot', content: data.response }); // Add bot response to the list
         } catch (error) {
           appendMessage('bot', 'Sorry, there was an error.');
         }
