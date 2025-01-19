@@ -61,7 +61,10 @@
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ messages: messageList }) // Send the list of messages
           });
-          const data = await response.json();
+            const data = await response.json();
+            const botResponse = data.content; // Access the 'content' property of the response object
+            appendMessage('bot', botResponse);
+            messageList.push({ sender: 'bot', text: botResponse }); // Add bot response to the list
           appendMessage('bot', data.response);
           messageList.push({ sender: 'bot', text: data.response }); // Add bot response to the list
         } catch (error) {
