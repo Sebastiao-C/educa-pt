@@ -27,43 +27,47 @@
     </div>
 
     <script>
-        const sendButton = document.getElementById('send');
-        const inputField = document.getElementById('input');
-        const messagesDiv = document.getElementById('messages');
+      const sendButton = document.getElementById('send');
+      const inputField = document.getElementById('input');
+      const messagesDiv = document.getElementById('messages');
+      let messageList = []; // New variable to store previous messages
 
-        sendButton.addEventListener('click', sendMessage);
-        inputField.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                sendMessage();
-            }
-        });
-
-        function appendMessage(sender, text) {
-            const messageDiv = document.createElement('div');
-            messageDiv.classList.add('message', sender);
-            messageDiv.textContent = `${sender === 'user' ? 'You' : 'Bot'}: ${text}`;
-            messagesDiv.appendChild(messageDiv);
-            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+      sendButton.addEventListener('click', sendMessage);
+      inputField.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+          sendMessage();
         }
+      });
 
-        async function sendMessage() {
-            const message = inputField.value.trim();
-            if (!message) return;
-            appendMessage('user', message);
-            inputField.value = '';
+      function appendMessage(sender, text) {
+        const messageDiv = document.createElement('div');
+        messageDiv.classList.add('message', sender);
+        messageDiv.textContent = `${sender === 'user' ? 'You' : 'Bot'}: ${text}`;
+        messagesDiv.appendChild(messageDiv);
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+      }
 
-            try {
-                const response = await fetch('https://educapt-hwhqgud4frhxemgq.westeurope-01.azurewebsites.net/chatbot', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ message })
-                });
-                const data = await response.json();
-                appendMessage('bot', data.response);
-            } catch (error) {
-                appendMessage('bot', 'Sorry, there was an error.');
-            }
+      async function sendMessage() {
+        const message = inputField.value.trim();
+        if (!message) return;
+        appendMessage('user', message);
+        inputField.value = '';
+
+        messageList.push({ sender: 'user', text: message }); // Add current message to the list
+
+        try {
+          const response = await fetch('https://educapt-hwhqgud4frhxemgq.westeurope-01.azurewebsites.net/chatbot', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ messages: messageList }) // Send the list of messages
+          });
+          const data = await response.json();
+          appendMessage('bot', data.response);
+          messageList.push({ sender: 'bot', text: data.response }); // Add bot response to the list
+        } catch (error) {
+          appendMessage('bot', 'Sorry, there was an error.');
         }
+      }
     </script>
 </body>
 </html>
