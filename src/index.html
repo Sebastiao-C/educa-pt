@@ -65,7 +65,7 @@
             const data = await response.json();
             const botResponse = data.content; // Access the 'content' property of the response object
             appendMessage('bot', botResponse);
-            messageList.push({ role: 'bot', content: botResponse }); // Add bot response to the list
+            messageList.push({ role: 'assistant', content: botResponse }); // Add bot response to the list
         } catch (error) {
           appendMessage('bot', 'Sorry, there was an error.');
         }
