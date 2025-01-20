@@ -17,7 +17,24 @@
     </style>
 </head>
 <body>
-    <div id="chat-container">
+  <div id="container">
+    <h2 id="header">Login</h2>
+
+    <!-- Login Form -->
+    <div id="login-form">
+        <div class="form-group">
+            <label for="username">Username</label>
+            <input type="text" id="username" placeholder="Enter your username" />
+        </div>
+        <div class="form-group">
+            <label for="password">Password</label>
+            <input type="password" id="password" placeholder="Enter your password" />
+        </div>
+        <button id="login">Login</button>
+    </div>
+
+    <!-- Chat Interface -->
+    <div id="chat-interface" class="hidden">
         <h2>Chat with our Bot</h2>
         <div id="messages"></div>
         <div id="input-container">
@@ -25,12 +42,33 @@
             <button id="send">Send</button>
         </div>
     </div>
+  </div>
 
-    <script>
+  <script>
+    const loginButton = document.getElementById('login');
+    const loginForm = document.getElementById('login-form');
       const sendButton = document.getElementById('send');
       const inputField = document.getElementById('input');
       const messagesDiv = document.getElementById('messages');
       let messageList = []; // New variable to store previous messages
+
+
+      // Mock login function (to be replaced with backend integration)
+      loginButton.addEventListener('click', function () {
+          const username = document.getElementById('username').value.trim();
+          const password = document.getElementById('password').value.trim();
+
+          if (!username || !password) {
+              alert('Please fill in both fields.');
+              return;
+          }
+
+          // Simulate successful login
+          alert('Login successful!'); // Replace with actual backend call
+          loginForm.classList.add('hidden');
+          chatInterface.classList.remove('hidden');
+          header.textContent = `Welcome, ${username}`;
+      });
 
       sendButton.addEventListener('click', sendMessage);
       inputField.addEventListener('keypress', function(e) {
