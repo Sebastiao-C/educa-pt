@@ -6,7 +6,7 @@
     <title>Chatbot</title>
     <style>
         body { font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 20px; }
-        #chat-container { max-width: 600px; margin: auto; background: #fff; padding: 20px; border-radius: 5px; }
+        #container { max-width: 600px; margin: auto; background: #fff; padding: 20px; border-radius: 5px; }
         #messages { height: 400px; overflow-y: scroll; border: 1px solid #ccc; padding: 10px; }
         .message { margin: 10px 0; }
         .user { color: blue; }
@@ -14,24 +14,46 @@
         #input-container { display: flex; margin-top: 10px; }
         #input { flex: 1; padding: 10px; }
         #send { padding: 10px; }
+        .hidden { display: none; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; }
+        .form-group input { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 5px; }
+        button { padding: 10px 20px; background-color: #007BFF; color: #fff; border: none; border-radius: 5px; cursor: pointer; }
+        button:hover { background-color: #0056b3; }
     </style>
 </head>
 <body>
   <div id="container">
     <h2 id="header">Login</h2>
 
-    <!-- Login Form -->
-    <div id="login-form">
-        <div class="form-group">
-            <label for="username">Username</label>
-            <input type="text" id="username" placeholder="Enter your username" />
-        </div>
-        <div class="form-group">
-            <label for="password">Password</label>
-            <input type="password" id="password" placeholder="Enter your password" />
-        </div>
-        <button id="login">Login</button>
-    </div>
+<!-- Login and Registration Forms -->
+<div id="auth-forms">
+  <div id="register-form" class="hidden">
+      <div class="form-group">
+          <label for="register-username">Username</label>
+          <input type="text" id="register-username" placeholder="Enter your username" />
+      </div>
+      <div class="form-group">
+          <label for="register-password">Password</label>
+          <input type="password" id="register-password" placeholder="Enter your password" />
+      </div>
+      <button id="register">Register</button>
+      <button id="switch-to-login">Already have an account? Login</button>
+  </div>
+
+  <div id="login-form">
+      <div class="form-group">
+          <label for="login-username">Username</label>
+          <input type="text" id="login-username" placeholder="Enter your username" />
+      </div>
+      <div class="form-group">
+          <label for="login-password">Password</label>
+          <input type="password" id="login-password" placeholder="Enter your password" />
+      </div>
+      <button id="login">Login</button>
+      <button id="switch-to-register">Don’t have an account? Register</button>
+  </div>
+</div>
 
     <!-- Chat Interface -->
     <div id="chat-interface" class="hidden">
@@ -45,8 +67,89 @@
   </div>
 
   <script>
-    const loginButton = document.getElementById('login');
-    const loginForm = document.getElementById('login-form');
+        const loginButton = document.getElementById('login');
+        const registerButton = document.getElementById('register');
+        const switchToRegisterButton = document.getElementById('switch-to-register');
+        const switchToLoginButton = document.getElementById('switch-to-login');
+
+        const loginForm = document.getElementById('login-form');
+        const registerForm = document.getElementById('register-form');
+        const authForms = document.getElementById('auth-forms');
+        const chatInterface = document.getElementById('chat-interface');
+        const header = document.getElementById('header');
+
+        // Switch between login and register forms
+        switchToRegisterButton.addEventListener('click', function () {
+            loginForm.classList.add('hidden');
+            registerForm.classList.remove('hidden');
+        });
+
+        switchToLoginButton.addEventListener('click', function () {
+            registerForm.classList.add('hidden');
+            loginForm.classList.remove('hidden');
+        });
+
+        // Handle registration
+        registerButton.addEventListener('click', async function () {
+            const username = document.getElementById('register-username').value.trim();
+            const password = document.getElementById('register-password').value.trim();
+
+            if (!username || !password) {
+                alert('Please fill in both fields.');
+                return;
+            }
+
+            try {
+                const response = await fetch('/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+                const data = await response.json();
+
+                if (response.ok) {
+                    alert(data.message);
+                    registerForm.classList.add('hidden');
+                    loginForm.classList.remove('hidden');
+                } else {
+                    alert(data.detail || 'Registration failed.');
+                }
+            } catch (error) {
+                alert('An error occurred during registration.');
+            }
+        });
+
+        // Handle login
+        loginButton.addEventListener('click', async function () {
+            const username = document.getElementById('login-username').value.trim();
+            const password = document.getElementById('login-password').value.trim();
+
+            if (!username || !password) {
+                alert('Please fill in both fields.');
+                return;
+            }
+
+            try {
+                const response = await fetch('/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+                const data = await response.json();
+
+                if (response.ok) {
+                    alert(data.message);
+                    authForms.classList.add('hidden');
+                    chatInterface.classList.remove('hidden');
+                    header.textContent = `Welcome, ${username}`;
+                } else {
+                    alert(data.detail || 'Login failed.');
+                }
+            } catch (error) {
+                alert('An error occurred during login.');
+            }
+        });
+
       const sendButton = document.getElementById('send');
       const inputField = document.getElementById('input');
       const messagesDiv = document.getElementById('messages');
