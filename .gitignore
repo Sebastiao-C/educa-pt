@@ -1,3 +1,9 @@
 node_modules/
 /test-results/
 
+serve_https.py
+cert.pem
+key.pem
+.env
+
+src/ignore/

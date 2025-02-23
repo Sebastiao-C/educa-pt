@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Chatbot</title>
+
+  <!-- Bootstrap CSS -->
+  <link
+    rel="stylesheet"
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+    crossorigin="anonymous"
+  />
+
+</head>
+<body class="bg-light">
+
+  <!-- Notification Container -->
+  <div
+    id="notification-container"
+    class="notification-container"
+    aria-live="polite"
+    role="status"
+  ></div>
+
+  <!-- Main Content (hidden by default until session is verified) -->
+  <div id="main-content" class="container-fluid d-none vh-100">
+    <div class="row h-100">
+
+      <!-- Sidebar: Conversations -->
+      <div
+        id="sidebar"
+        class="col-12 col-md-3 col-lg-3 bg-white border-end p-4 d-flex flex-column"
+        style="max-height: 100%;"
+      >
+        <div>
+          <h3 class="fw-bold mb-4">Your Conversations</h3>
+          <button id="new-convo-btn" class="btn btn-primary w-100 mb-3">
+            + New Conversation
+          </button>
+        </div>
+
+        <!-- Scrollable conversation list -->
+        <ul
+          id="conversation-list"
+          class="list-unstyled border rounded p-2 flex-grow-1 overflow-auto"
+          role="list"
+        ></ul>
+      </div>
+
+      <!-- Chat Interface -->
+      <div id="chat-interface" class="col-12 col-md-9 col-lg-9 d-flex flex-column p-4">
+        <!-- Header with greeting and logout -->
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h2 id="user-greeting" class="fw-bold"></h2>
+          <div class="d-flex gap-2">
+            <a href="quiz.html" class="btn btn-outline-secondary">Go to Quizzes</a>
+            <button id="logout" class="btn btn-danger">Logout</button>
+          </div>
+        </div>
+
+        <!-- Messages area (scrollable) -->
+        <div
+          id="messages"
+          class="border rounded mb-3 bg-white p-3 flex-grow-1 overflow-auto"
+          aria-live="polite"
+        ></div>
+
+        <!-- Input area (sticks to bottom) -->
+        <div class="input-group">
+          <input
+            type="text"
+            id="input"
+            class="form-control"
+            placeholder="Type your message here..."
+          />
+          <button id="send" class="btn btn-primary">Send</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- New Conversation Modal -->
+  <div
+    class="modal fade"
+    id="new-convo-modal"
+    tabindex="-1"
+    aria-labelledby="newConvoModalLabel"
+    aria-hidden="true"
+  >
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 id="newConvoModalLabel" class="modal-title">Create a New Conversation</h5>
+          <button
+            type="button"
+            class="btn-close"
+            data-bs-dismiss="modal"
+            aria-label="Close"
+          ></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="subject-select" class="form-label">Subject (required):</label>
+            <select id="subject-select" class="form-select">
+              <option value="">--Choose a subject--</option>
+              <option value="maths">Maths</option>
+              <option value="history">History</option>
+              <option value="english">English</option>
+              <option value="physics">Physics</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label for="grade-select" class="form-label">Grade (optional):</label>
+            <select id="grade-select" class="form-select">
+              <option value="">--No Grade--</option>
+              <option value="5th">5th</option>
+              <option value="6th">6th</option>
+              <option value="7th">7th</option>
+              <option value="8th">8th</option>
+              <option value="9th">9th</option>
+              <option value="10th">10th</option>
+              <option value="11th">11th</option>
+              <option value="12th">12th</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button id="create-convo-btn" class="btn btn-primary">Create</button>
+          <button
+            id="cancel-convo-btn"
+            class="btn btn-secondary"
+            data-bs-dismiss="modal"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bootstrap JS (for modals etc.) -->
+  <script
+    src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"
+    crossorigin="anonymous"
+  ></script>
+
+  <!-- External Libraries for Markdown & MathJax -->
+  <script src="marked.min.js"></script>
+  <script
+    async
+    src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"
+  ></script>
+
+  <!-- Main Chatbot Script -->
+  <script>
+    const API_URL = "{{API_URL}}"; // replaced by serve-https.py
+
+    // ==================================
+    // DOM Elements & Global State
+    // ==================================
+    const notificationContainer = document.getElementById('notification-container');
+    const mainContent = document.getElementById('main-content');
+    const userGreeting = document.getElementById('user-greeting');
+    const logoutButton = document.getElementById('logout');
+
+    const messagesDiv = document.getElementById('messages');
+    const inputField = document.getElementById('input');
+    const sendButton = document.getElementById('send');
+
+    const conversationList = document.getElementById('conversation-list');
+    const newConvoBtn = document.getElementById('new-convo-btn');
+
+    // Modal elements
+    const newConvoModalElement = document.getElementById('new-convo-modal');
+    const createConvoBtn = document.getElementById('create-convo-btn');
+    const cancelConvoBtn = document.getElementById('cancel-convo-btn');
+    const subjectSelect = document.getElementById('subject-select');
+    const gradeSelect = document.getElementById('grade-select');
+
+    // We use bootstrap's modal API
+    let newConvoModal = null;
+    let currentConversationId = null;
+
+    // ==================================
+    // On Page Load, Check Session
+    // ==================================
+    document.addEventListener("DOMContentLoaded", () => {
+      newConvoModal = new bootstrap.Modal(newConvoModalElement, {});
+      checkSession();
+    });
+
+    async function checkSession() {
+      try {
+        const response = await fetch(`${API_URL}/protected`, {
+          method: "GET",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          mainContent.classList.remove('d-none');
+          userGreeting.textContent = data.message;  // e.g. "Welcome, username!"
+          await fetchConversations();
+        } else {
+          // If not authenticated, redirect to login
+          window.location.href = 'login.html';
+        }
+      } catch (error) {
+        console.error("Error checking session:", error);
+        window.location.href = 'login.html';
+      }
+    }
+
+    // ==================================
+    // Notification System
+    // ==================================
+    function showNotification(message, type = 'info') {
+      const notification = document.createElement('div');
+      notification.className = `notification ${type}`;
+      notification.textContent = message;
+      notificationContainer.appendChild(notification);
+      // Fade out after 4 seconds
+      setTimeout(() => {
+        notification.classList.add('fade-out');
+        setTimeout(() => {
+          notificationContainer.removeChild(notification);
+        }, 500);
+      }, 4000);
+    }
+
+    // ==================================
+    // Logout
+    // ==================================
+    logoutButton.addEventListener('click', async () => {
+      try {
+        const response = await fetch(`${API_URL}/logout`, {
+          method: "GET",
+          credentials: "include"
+        });
+        if (response.ok) {
+          showNotification("Logged out successfully.", "success");
+          setTimeout(() => {
+            // Redirect to login after logout
+            window.location.href = 'login.html';
+          }, 1000);
+        } else {
+          showNotification("An error occurred during logout.", "error");
+        }
+      } catch (error) {
+        showNotification("An error occurred during logout.", "error");
+      }
+    });
+
+    // ==================================
+    // Conversations
+    // ==================================
+    async function fetchConversations() {
+      try {
+        const response = await fetch(`${API_URL}/conversations`, {
+          method: 'GET',
+          credentials: 'include'
+        });
+        const data = await response.json();
+        if (response.ok) {
+          populateConversationList(data.conversations);
+        } else {
+          console.error("Error fetching conversations:", data);
+        }
+      } catch (error) {
+        console.error("Error fetching conversations:", error);
+      }
+    }
+
+    function populateConversationList(conversations) {
+      conversationList.innerHTML = "";
+      conversations.forEach(conv => {
+        const li = document.createElement('li');
+        li.className = "conversation-item p-2 mb-2 border rounded";
+        li.setAttribute('role', 'listitem');
+        li.setAttribute('tabindex', '0');
+        li.textContent = `#${conv.id} | ${conv.subject}${conv.grade ? ' (' + conv.grade + ')' : ''}`;
+
+        li.addEventListener('click', () => {
+          currentConversationId = conv.id;
+          highlightSelectedConversation(li);
+          loadConversation(currentConversationId);
+        });
+
+        li.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') {
+            currentConversationId = conv.id;
+            highlightSelectedConversation(li);
+            loadConversation(currentConversationId);
+          }
+        });
+
+        conversationList.appendChild(li);
+      });
+    }
+
+    function highlightSelectedConversation(selectedLi) {
+      const items = document.querySelectorAll('.conversation-item');
+      items.forEach(item => item.classList.remove('active'));
+      selectedLi.classList.add('active');
+    }
+
+    async function loadConversation(conversationId) {
+      messagesDiv.innerHTML = "";
+      try {
+        const response = await fetch(`${API_URL}/conversations/${conversationId}/messages`, {
+          method: 'GET',
+          credentials: 'include'
+        });
+        const data = await response.json();
+        if (response.ok) {
+          data.messages.forEach(msg => {
+            appendMessage(msg.role, msg.content);
+          });
+        } else {
+          showNotification(data.detail || "Could not fetch messages.", "error");
+        }
+      } catch (error) {
+        showNotification("Error loading conversation.", "error");
+      }
+    }
+
+    // ==================================
+    // New Conversation Modal
+    // ==================================
+    newConvoBtn.addEventListener('click', () => {
+      newConvoModal.show();
+      subjectSelect.focus();
+    });
+
+    createConvoBtn.addEventListener('click', async () => {
+      const subject = subjectSelect.value;
+      const grade = gradeSelect.value;
+
+      if (!subject) {
+        showNotification("Please select a subject before creating a conversation.", "error");
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_URL}/conversations`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ subject, grade })
+        });
+        const data = await response.json();
+        if (response.ok) {
+          showNotification("Conversation created successfully.", "success");
+          currentConversationId = data.conversation_id;
+          closeModal();
+          await fetchConversations();
+          await loadConversation(currentConversationId);
+        } else {
+          showNotification(data.detail || 'Could not create conversation.', "error");
+        }
+      } catch (error) {
+        showNotification('Error creating conversation.', "error");
+      }
+    });
+
+    cancelConvoBtn.addEventListener('click', closeModal);
+
+    function closeModal() {
+      newConvoModal.hide();
+      subjectSelect.value = "";
+      gradeSelect.value = "";
+      newConvoBtn.focus();
+    }
+
+    // ==================================
+    // Send Messages
+    // ==================================
+    sendButton.addEventListener('click', sendMessage);
+    inputField.addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') {
+        sendMessage();
+      }
+    });
+
+    async function sendMessage() {
+      const message = inputField.value.trim();
+      if (!message) return;
+      if (!currentConversationId) {
+        showNotification("Please select or create a conversation first!", "error");
+        return;
+      }
+
+      // Append the user's message immediately
+      appendMessage('user', message);
+      inputField.value = '';
+      inputField.disabled = true;
+
+      try {
+        const response = await fetch(`${API_URL}/conversations/${currentConversationId}/messages`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: "include",
+          body: JSON.stringify({ role: 'user', content: message })
+        });
+        const data = await response.json();
+        if (response.ok) {
+          const botResponse = data.assistant_response;
+          appendMessage('assistant', botResponse);
+        } else {
+          appendMessage('assistant', data.detail || 'Error from server');
+        }
+      } catch (error) {
+        appendMessage('assistant', 'Sorry, there was an error.');
+      } finally {
+        inputField.disabled = false;
+        inputField.focus();
+      }
+    }
+
+    function appendMessage(role, content) {
+      const messageDiv = document.createElement('div');
+      messageDiv.classList.add('message', role, 'mb-2', 'p-2', 'rounded');
+
+      if (role === 'assistant') {
+        messageDiv.classList.add('bg-light');
+        messageDiv.innerHTML = `<strong>Bot:</strong> ${marked.parse(content)}`;
+
+        // Re-process MathJax
+        window.MathJax.typesetClear();
+        window.MathJax.typesetPromise([messageDiv]).then(() => {
+          console.log("MathJax reprocessed!");
+        });
+      } else {
+        messageDiv.classList.add('bg-primary', 'text-white');
+        messageDiv.textContent = `You: ${content}`;
+      }
+
+      messagesDiv.appendChild(messageDiv);
+      messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    }
+  </script>
+</body>
+</html>
